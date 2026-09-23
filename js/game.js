@@ -136,3 +136,4 @@ on('delete-meal-btn', 'click', deleteMeal);
 on('meal', 'change', updateDeleteMealButton);
 handle(async function () { await loadMeals(); if (savedKey()) await loadAll(); })();
 
+loadBuildVersion();
