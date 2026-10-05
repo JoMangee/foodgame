@@ -5,7 +5,19 @@ function text(id, value) { const node = $(id); if (node) node.textContent = valu
 function escape(value) { const node = document.createElement('span'); node.textContent = value ?? ''; return node.innerHTML; }
 function date(value) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString(); }
 function list(id, entries, makeEntry) { const node = $(id); if (!node) return; node.replaceChildren(); if (!entries?.length) { const empty = document.createElement('p'); empty.className = 'empty'; empty.textContent = 'Nothing here yet.'; node.append(empty); return; } entries.forEach((entry) => node.insertAdjacentHTML('beforeend', makeEntry(entry))); }
-function entryMarkup(entry, includePlayer = false) { const visiblePlayer = String(entry.player || '').toLowerCase() === 'cooper' ? DISPLAY_NAME : entry.player; const label = includePlayer ? `${visiblePlayer} ↗ ` : ''; return `<div class="entry"><strong>${escape(label)}${escape(entry.summary?.meal_name || entry.meal)}</strong><span class="xp">+${Number(entry.xp_gained || 0)} XP</span><small>${escape(date(entry.timestamp_utc))} ↗ rating ${escape(entry.rating)}/10${entry.new ? ' ↗ NEW FOOD' : ''}${entry.level_after ? ` ↗ level ${escape(entry.level_after)}` : ''}</small></div>`; }
+function entryMarkup(entry, includePlayer = false) {
+  const visiblePlayer = String(entry.player || "").toLowerCase() === "cooper" ? DISPLAY_NAME : entry.player;
+  const label = includePlayer ? `${visiblePlayer} ↗ ` : "";
+  const xp = Number(entry.xp_gained);
+  const hasXp = entry.xp_gained !== null && entry.xp_gained !== undefined && entry.xp_gained !== "" && Number.isFinite(xp);
+  const xpLabel = hasXp ? `+${xp} XP` : "XP not recorded";
+  const buffs = Array.isArray(entry.buffs) && entry.buffs.length
+
+    ? `<small class="entry-buffs">Buffs: ${entry.buffs.map((buff) => escape(buff)).join(" · ")}</small>`
+
+    : "";
+  return `<div class="entry"><strong>${escape(label)}${escape(entry.summary?.meal_name || entry.meal)}</strong><span class="xp">${xpLabel}</span>${buffs}<small>${escape(date(entry.timestamp_utc))} ↗ rating ${escape(entry.rating)}/10${entry.new ? " ↗ NEW FOOD" : ""}${entry.level_after ? ` ↗ level ${escape(entry.level_after)}` : ""}</small></div>`;
+}
 export function setStatus(message, good = false) { const node = $('status'); if (!node) return; node.textContent = message; node.className = `status${good ? ' good' : ' bad'}`; }
 export function setConnected(connected) { $('connection-dot')?.classList.toggle('online', connected); }
 export function renderStats(data) { const stats = data?.stats || {}; text('level', stats.level ?? 1); text('total-xp', stats.total_xp ?? 0); text('streak', stats.streak ?? 0); text('tolerance', stats.spice_tolerance ?? 8); const progress = Number(stats.xp_progress ?? 0); const needed = Math.max(1, Number(stats.xp_needed ?? 10)); text('xp-copy', `${progress} / ${needed} XP until next level`); const fill = $('xp-fill'); if (fill) fill.style.width = `${Math.min(100, Math.max(0, progress / needed * 100))}%`; }
