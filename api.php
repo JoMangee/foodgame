@@ -304,7 +304,8 @@ if ($action === 'cooldown') {
     if ($lock === false || !@flock($lock, LOCK_EX)) {
         fail('storage_unavailable', 500);
     }
-    $data = read_json_file($dataFile, ['version' => 1, 'players' => [], 'entries' => []]);
+    $data = read_json_file($dataFile, ['version' => 2, 'players' => [], 'entries' => []]);
+$data['version'] = 2;
     $data['entries'] = is_array($data['entries'] ?? null) ? $data['entries'] : [];
     $lastEntry = $data['entries'][count($data['entries']) - 1] ?? null;
     if (
@@ -332,6 +333,14 @@ if ($action === 'cooldown') {
     }
     $spice = (int)($catalog[$meal]['spice'] ?? 0);
     $buffs = is_array($catalog[$meal]['buffs'] ?? null) ? array_values($catalog[$meal]['buffs']) : [];
+if ($meal === 'noodle-masterpiece') {
+    $buffs = ['2x base energy for 15 minutes', '+70% speed for 15 minutes', '+20% acceleration for 15 minutes', 'duration 15 minutes'];
+    $requestedBuffs = request_string('buffs');
+    if ($requestedBuffs !== null) {
+        $submittedBuffs = json_decode($requestedBuffs, true);
+        if ($submittedBuffs !== $buffs) fail('invalid_buff_roll');
+    }
+}
     $xpBase = (int)($catalog[$meal]['xp_base'] ?? 10);
     $xpGained = $xpBase;
     $hasPriorEntry = false;
