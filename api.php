@@ -189,66 +189,30 @@ $catalog = meal_catalog($document);
 if ($action === 'meals') {
     respond(['ok' => true, 'meals' => array_values($catalog)]);
 }
-if ($action === 'meals_add') {
+if ($action === 'meals_update') {
     $id = request_string('id');
     $name = trim(request_string('name') ?? '');
     $spiceRaw = request_string('spice');
-    $xpBaseRaw = request_string('xp_base');
-    $buffsRaw = request_string('buffs');
-    $buffs = [];
+    $xpBaseRaw = request_string('xp_base') ?? '';
     if ($id === null || !preg_match('/^[a-z0-9-]{1,64}$/', $id)) fail('invalid_meal_id');
-    if ($name === '' || strlen($name) > 120) fail('invalid_meal_name');
-    if ($spiceRaw === null || !preg_match('/^(?:0|[1-9][0-9]*)$/', $spiceRaw)) fail('invalid_spice');
-    if ($xpBaseRaw !== null && !preg_match('/^(?:0|[1-9][0-9]*)$/', $xpBaseRaw)) fail('invalid_xp_base');
-    if ($buffsRaw !== null) {
-        $decodedBuffs = json_decode($buffsRaw, true);
-        if (!is_array($decodedBuffs) || !array_is_list($decodedBuffs)) fail('invalid_buffs');
-        foreach ($decodedBuffs as $buff) {
-            if (
-                !is_array($buff)
-                || !isset($buff['name'], $buff['value'], $buff['unit'])
-                || !is_string($buff['name'])
-                || trim($buff['name']) === ''
-                || (!is_int($buff['value']) && !is_float($buff['value']))
-                || !is_finite((float) $buff['value'])
-                || !is_string($buff['unit'])
-                || trim($buff['unit']) === ''
-                || (
-                    array_key_exists('chance', $buff)
-                    && (!is_int($buff['chance']) && !is_float($buff['chance'])
-                        || !is_finite((float) $buff['chance']))
-                )
-            ) {
-                fail('invalid_buff');
-            }
-            $normalizedBuff = [
-                'name' => trim($buff['name']),
-                'value' => $buff['value'],
-                'unit' => trim($buff['unit']),
-            ];
-            if (array_key_exists('chance', $buff)) {
-                $normalizedBuff['chance'] = $buff['chance'];
-            }
-            $buffs[] = $normalizedBuff;
-        }
-    }
-    $spice = (int) $spiceRaw;
-    $xpBase = $xpBaseRaw === null ? 10 : (int) $xpBaseRaw;
-    if ($spice < 0 || $spice > 10) fail('invalid_spice');
-    if (array_key_exists($id, $catalog)) fail('meal_exists', 409);
+    if ($name === '' || mb_strlen($name) > 120) fail('invalid_meal_name');
+    if ($spiceRaw === null || !preg_match('/^(?:0|[1-9][0-9]*)$/', $spiceRaw) || (int) $spiceRaw > 10) fail('invalid_spice');
+    $xpBase = $xpBaseRaw === '' ? 10 : (int) $xpBaseRaw;
+    if ($xpBase < 0 || $xpBase > 999) fail('invalid_xp_base');
     $meals = is_array($document['meals'] ?? null) ? $document['meals'] : [];
+    if (!array_key_exists($id, $meals)) fail('meal_not_found', 404);
+    $buffs = is_array($meals[$id]['buffs'] ?? null) ? $meals[$id]['buffs'] : [];
     $meals[$id] = [
         'id' => $id,
         'name' => $name,
-        'spice' => $spice,
+        'spice' => (int) $spiceRaw,
         'buffs' => $buffs,
         'xp_base' => $xpBase,
     ];
-    $document['version'] = isset($document['version']) ? (int) $document['version'] : 1;
+    $document['version'] = isset($document['version']) ? (int) $document['version'] + 1 : 1;
     $document['meals'] = $meals;
     if (!persist_meals($mealsFile, $document)) fail('meal_persist_failed', 500);
-    $updated = meal_catalog($document);
-    respond(['ok' => true, 'meals' => array_values($updated)]);
+    respond(['ok' => true, 'meals' => array_values(meal_catalog($document))]);
 }
 if ($action === "meals_update_buffs") {
     $id = request_string("id");

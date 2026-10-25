@@ -3,6 +3,8 @@ import { apiKeyValue, formValues, on, playerValue as uiPlayerValue, populateMeal
 
 const KEY_NAME = 'foodgameApiKey';
 const PLAYER_NAME = 'foodgamePlayer';
+var mealCatalog = [];
+var editingMealId = null;
 function savedKey() { return localStorage.getItem(KEY_NAME) || ''; }
 function storeKey() { const key = apiKeyValue(); if (key) localStorage.setItem(KEY_NAME, key); return key; }
 function savedPlayer() { return localStorage.getItem(PLAYER_NAME) || 'CJLBee'; }
@@ -19,6 +21,7 @@ function fallbackMealList() {
   });
 }
 function renderMealList(meals) {
+  mealCatalog = meals;
   populateMeals(Array.isArray(meals) && meals.length ? meals : fallbackMealList());
 }
 async function loadMeals() {
@@ -30,9 +33,11 @@ async function loadMeals() {
   try {
     const result = await get(key, { action: 'meals' });
     renderMealList(result.meals); 
+    populateAddMealForm();
     updateDeleteMealButton();
   } catch (error) {
     renderMealList([]);
+    populateAddMealForm();
     setStatus('Could not load meals; using offline meals.');
   }
 }
@@ -44,7 +49,7 @@ async function addMeal(event) {
   const name = document.getElementById('add-meal-name')?.value.trim() || '';
   const spice = document.getElementById('add-meal-spice')?.value.trim() || '';
   const xpBase = document.getElementById('add-meal-xp-base')?.value.trim() || '';
-  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+  const id = editingMealId || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
 if (!name || name.length > 120 || !id || !/^(?:0|[1-9][0-9]*)$/.test(spice) || Number(spice) > 10 || (xpBase !== '' && !/^(?:0|[1-9][0-9])$/.test(xpBase))) {
     setStatus('Enter a valid meal name, spice, and optional XP base.');
     return;
@@ -56,13 +61,14 @@ if (!name || name.length > 120 || !id || !/^(?:0|[1-9][0-9]*)$/.test(spice) || N
   }
 if (submit) submit.disabled = true;
   try {
-    const params = { action: 'meals_add', id: id, name: name, spice: spice };
+    const params = editingMealId ? { action: 'meals_update', id: id, name: name, spice: spice } : { action: 'meals_add', id: id, name: name, spice: spice };
     if (xpBase !== '') params.xp_base = xpBase;
     const result = await post(key, params);
     renderMealList(result.meals);
     document.getElementById('meal').value = id;
     form.reset();
-    setStatus('Meal added.', true);
+    populateAddMealForm();
+    setStatus(editingMealId ? 'Meal updated.' : 'Meal added.', true);
   } catch (error) {
     setStatus(error.message);
   } finally {
@@ -79,6 +85,22 @@ function updateDeleteMealButton() {
     btn.disabled = CORE_MEALS.indexOf(id) !== -1;
 }
 
+function populateAddMealForm() {
+    var mealSelect = document.getElementById('meal');
+    var nameInput = document.getElementById('add-meal-name');
+    var spiceInput = document.getElementById('add-meal-spice');
+    var xpInput = document.getElementById('add-meal-xp-base');
+    var submit = document.querySelector('#add-meal-form button[type="submit"]');
+    var id = mealSelect ? mealSelect.value : '';
+    var meal = null;
+    for (var i = 0; i < mealCatalog.length; i++) { if (mealCatalog[i].id === id) { meal = mealCatalog[i]; break; } }
+    editingMealId = meal ? meal.id : null;
+    if (nameInput) nameInput.value = meal ? meal.name : '';
+    if (spiceInput) spiceInput.value = meal ? meal.spice : '';
+    if (xpInput) xpInput.value = meal ? (meal.xp_base !== undefined ? meal.xp_base : '') : '';
+    if (submit) submit.textContent = meal ? 'UPDATE MEAL' : 'ADD MEAL';
+}
+
 async function deleteMeal(event) {
     event.preventDefault();
     var key = savedKey() || apiKeyValue();
@@ -91,6 +113,9 @@ async function deleteMeal(event) {
         setStatus('Select a meal to delete.');
         return;
     }
+    var mealSelect = document.getElementById('meal');
+    var mealName = mealSelect && mealSelect.selectedOptions && mealSelect.selectedOptions[0] ? mealSelect.selectedOptions[0].textContent : id;
+    if (!window.confirm('Delete meal "' + mealName + '"? This cannot be undone.')) return;
     var btn = document.getElementById('delete-meal-btn');
     if (btn) btn.disabled = true;
     try {
@@ -134,6 +159,7 @@ on('add-meal-form', 'submit', addMeal);
 on('show-add-meal', 'change', function (event) { toggleAddMeal(event.target.checked); });
 on('delete-meal-btn', 'click', deleteMeal);
 on('meal', 'change', updateDeleteMealButton);
+on('meal', 'change', populateAddMealForm);
 handle(async function () { await loadMeals(); if (savedKey()) await loadAll(); })();
 
 loadBuildVersion();
