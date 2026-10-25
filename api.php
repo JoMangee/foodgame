@@ -250,6 +250,26 @@ if ($action === 'meals_add') {
     $updated = meal_catalog($document);
     respond(['ok' => true, 'meals' => array_values($updated)]);
 }
+if ($action === "meals_update_buffs") {
+    $id = request_string("id");
+    $raw = request_string("buffs");
+    if ($id === null || !preg_match("/^[a-z0-9-]{1,64}$/", $id)) fail("invalid_meal_id");
+    if ($raw === null) fail("invalid_buffs");
+    $buffs = json_decode($raw, true);
+    if (!is_array($buffs) || !array_is_list($buffs) || count($buffs) > 50) fail("invalid_buffs");
+    foreach ($buffs as &$buff) {
+        if (!is_string($buff) || trim($buff) === "" || strlen(trim($buff)) > 240) fail("invalid_buff");
+        $buff = trim($buff);
+    }
+    unset($buff);
+    $meals = is_array($document["meals"] ?? null) ? $document["meals"] : [];
+    if (!isset($meals[$id]) || !is_array($meals[$id])) fail("meal_not_found", 404);
+    $meals[$id]["buffs"] = $buffs;
+    $document["version"] = isset($document["version"]) ? (int) $document["version"] : 1;
+    $document["meals"] = $meals;
+    if (!persist_meals($mealsFile, $document)) fail("meal_persist_failed", 500);
+    respond(["ok" => true, "meals" => array_values(meal_catalog($document))]);
+}
 if ($action === 'meals_delete') {
     $id = request_string('id');
     if ($id === null || !preg_match('/^[a-z0-9-]{1,64}$/', $id)) fail('invalid_meal_id');
