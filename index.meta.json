@@ -4,8 +4,8 @@
   "description": "Gamified food tracker with XP, spice tolerance and Noodle Masterpiece buffs",
   "section": "Playable browser snippets",
   "featured": false,
-  "version": "1.2.2",
-  "build": "MESHDEV-140",
+  "version": "1.2.3",
+  "build": "MESHDEV-136",
   "build_date": "2026-11-09",
-  "note": "display meal names, buffs: validated write + serve per meal, meal edit/update/delete/confirm and API"
+  "note": "display meal names, fix add, buffs: validated write + serve per meal, meal edit/update/delete/confirm and API"
 }

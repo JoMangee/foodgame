@@ -189,6 +189,30 @@ $catalog = meal_catalog($document);
 if ($action === 'meals') {
     respond(['ok' => true, 'meals' => array_values($catalog)]);
 }
+if ($action === 'meals_add') {
+    $id = request_string('id');
+    $name = trim(request_string('name') ?? '');
+    $spiceRaw = request_string('spice');
+    $xpBaseRaw = request_string('xp_base') ?? '';
+    if ($id === null || !preg_match('/^[a-z0-9-]{1,64}$/', $id)) fail('invalid_meal_id');
+    if ($name === '' || mb_strlen($name) > 120) fail('invalid_meal_name');
+    if ($spiceRaw === null || !preg_match('/^(?:0|[1-9][0-9]*)$/', $spiceRaw) || (int) $spiceRaw > 10) fail('invalid_spice');
+    $xpBase = $xpBaseRaw === '' ? 10 : (int) $xpBaseRaw;
+    if ($xpBase < 0 || $xpBase > 999) fail('invalid_xp_base');
+    $meals = is_array($document['meals'] ?? null) ? $document['meals'] : [];
+    if (array_key_exists($id, $meals)) fail('meal_already_exists', 409);
+    $meals[$id] = [
+        'id' => $id,
+        'name' => $name,
+        'spice' => (int) $spiceRaw,
+        'buffs' => [],
+        'xp_base' => $xpBase,
+    ];
+    $document['version'] = isset($document['version']) ? (int) $document['version'] + 1 : 1;
+    $document['meals'] = $meals;
+    if (!persist_meals($mealsFile, $document)) fail('meal_persist_failed', 500);
+    respond(['ok' => true, 'meals' => array_values(meal_catalog($document))]);
+}
 if ($action === 'meals_update') {
     $id = request_string('id');
     $name = trim(request_string('name') ?? '');
@@ -250,7 +274,7 @@ if ($action === 'meals_delete') {
     respond(['ok' => true, 'meals' => array_values($updated)]);
 }
 // The remaining actions retain the lightweight game API and always validate meal IDs against meals.json.
-if (!in_array($action, ['stats', 'entries', 'feed', 'activity', 'log', 'effects', 'cooldown'], true)) fail('invalid_action');
+if (!in_array($action, ['meals_add', 'stats', 'entries', 'feed', 'activity', 'log', 'effects', 'cooldown'], true)) fail('invalid_action');
 function cooldown_remaining(array $entries, string $player, string $meal): int
 {
     $last = $entries[count($entries) - 1] ?? null;

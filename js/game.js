@@ -101,6 +101,19 @@ function populateAddMealForm() {
     if (submit) submit.textContent = meal ? 'UPDATE MEAL' : 'ADD MEAL';
 }
 
+function startNewMeal() {
+    editingMealId = null;
+    var nameInput = document.getElementById('add-meal-name');
+    var spiceInput = document.getElementById('add-meal-spice');
+    var xpInput = document.getElementById('add-meal-xp-base');
+    var submit = document.querySelector('#add-meal-form button[type="submit"]');
+    if (nameInput) nameInput.value = '';
+    if (spiceInput) spiceInput.value = '';
+    if (xpInput) xpInput.value = '';
+    if (submit) submit.textContent = 'ADD MEAL';
+    setStatus('New meal - enter a name and spice.');
+}
+
 async function deleteMeal(event) {
     event.preventDefault();
     var key = savedKey() || apiKeyValue();
@@ -157,6 +170,7 @@ on('poll-activity', 'click', handle(pollActivity));
 on('meal-form', 'submit', logMeal);
 on('add-meal-form', 'submit', addMeal);
 on('show-add-meal', 'change', function (event) { toggleAddMeal(event.target.checked); });
+on('new-meal-btn', 'click', startNewMeal);
 on('delete-meal-btn', 'click', deleteMeal);
 on('meal', 'change', updateDeleteMealButton);
 on('meal', 'change', populateAddMealForm);
