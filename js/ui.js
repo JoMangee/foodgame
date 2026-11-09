@@ -5,6 +5,16 @@ function text(id, value) { const node = $(id); if (node) node.textContent = valu
 function escape(value) { const node = document.createElement('span'); node.textContent = value ?? ''; return node.innerHTML; }
 function date(value) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString(); }
 function list(id, entries, makeEntry) { const node = $(id); if (!node) return; node.replaceChildren(); if (!entries?.length) { const empty = document.createElement('p'); empty.className = 'empty'; empty.textContent = 'Nothing here yet.'; node.append(empty); return; } entries.forEach((entry) => node.insertAdjacentHTML('beforeend', makeEntry(entry))); }
+function mealLabel(entry) {
+  if (entry.summary && entry.summary.meal_name) return entry.summary.meal_name;
+  const id = String(entry.meal || "").trim();
+  if (!id) return "Unknown meal";
+  return id
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 function entryMarkup(entry, includePlayer = false) {
   const visiblePlayer = String(entry.player || "").toLowerCase() === "cooper" ? DISPLAY_NAME : entry.player;
   const label = includePlayer ? `${visiblePlayer} ↗ ` : "";
@@ -16,7 +26,7 @@ function entryMarkup(entry, includePlayer = false) {
     ? `<small class="entry-buffs">Buffs: ${entry.buffs.map((buff) => escape(buff)).join(" · ")}</small>`
 
     : "";
-  return `<div class="entry"><strong>${escape(label)}${escape(entry.summary?.meal_name || entry.meal)}</strong><span class="xp">${xpLabel}</span>${buffs}<small>${escape(date(entry.timestamp_utc))} ↗ rating ${escape(entry.rating)}/10${entry.new ? " ↗ NEW FOOD" : ""}${entry.level_after ? ` ↗ level ${escape(entry.level_after)}` : ""}</small></div>`;
+  return `<div class="entry"><strong>${escape(label)}${escape(mealLabel(entry))}</strong><span class="xp">${xpLabel}</span>${buffs}<small>${escape(date(entry.timestamp_utc))} ↗ rating ${escape(entry.rating)}/10${entry.new ? " ↗ NEW FOOD" : ""}${entry.level_after ? ` ↗ level ${escape(entry.level_after)}` : ""}</small></div>`;
 }
 export function setStatus(message, good = false) { const node = $('status'); if (!node) return; node.textContent = message; node.className = `status${good ? ' good' : ' bad'}`; }
 export function setConnected(connected) { $('connection-dot')?.classList.toggle('online', connected); }
